@@ -144,27 +144,30 @@ contract BettingEvents {
         betEvent.winningOption = _winningOption;
         betEvent.isCompleted = true;
 
-        uint256 totalWinners = 0;
+        uint256 totalWinnersBetAmount = 0;
+        address payable[] memory winnersPayable = new address payable[](
+            betEvent.bettors.length
+        );
+        uint256 winnersCount = 0;
+
         for (uint256 i = 0; i < betEvent.bettors.length; i++) {
             address bettor = betEvent.bettors[i];
             if (
                 keccak256(abi.encodePacked(betEvent.bets[bettor].option)) ==
                 keccak256(abi.encodePacked(_winningOption))
             ) {
-                totalWinners++;
+                totalWinnersBetAmount += betEvent.bets[bettor].amount;
+                winnersPayable[winnersCount] = payable(bettor);
+                winnersCount++;
             }
         }
 
-        if (totalWinners > 0) {
-            uint256 rewardPerWinner = betEvent.prizePool / totalWinners;
-            for (uint256 i = 0; i < betEvent.bettors.length; i++) {
-                address payable bettor = payable(betEvent.bettors[i]);
-                if (
-                    keccak256(abi.encodePacked(betEvent.bets[bettor].option)) ==
-                    keccak256(abi.encodePacked(_winningOption))
-                ) {
-                    bettor.transfer(rewardPerWinner);
-                }
+        if (totalWinnersBetAmount > 0) {
+            for (uint256 i = 0; i < winnersCount; i++) {
+                address payable winner = winnersPayable[i];
+                uint256 winnerReward = (betEvent.bets[winner].amount *
+                    betEvent.prizePool) / totalWinnersBetAmount;
+                winner.transfer(winnerReward);
             }
         }
 
